@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Manajemen Bongkar Muat (Dengan Counter)</title>
+    
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #2563eb;
+            --bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-light: #64748b;
+            --danger: #ef4444; /* Warna Bongkar */
+            --success: #10b981; /* Warna Muat */
+            --warning: #f59e0b; /* Warna Pindah */ 
+            --border-radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            padding: 15px;
+        }
+
+        .app-container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* HEADER */
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 1.5rem; margin-bottom: 5px; }
+        .header p { font-size: 0.9rem; opacity: 0.8; }
+
+        /* --- DASHBOARD COUNTER (BARU) --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 2 Kolom di HP */
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            border: 1px solid #e2e8f0;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); }
+
+        .stat-label { font-size: 0.85rem; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 1.8rem; font-weight: 700; margin-top: 5px; }
+
+        .stat-bongkar { border-top: 4px solid var(--danger); }
+        .stat-bongkar .stat-value { color: var(--danger); }
+
+        .stat-muat { border-top: 4px solid var(--success); }
+        .stat-muat .stat-value { color: var(--success); }
+
+        .stat-pindah { border-top: 4px solid var(--warning); }
+        .stat-pindah .stat-value { color: var(--warning); }
+
+        .stat-total { border-top: 4px solid var(--primary); }
+        .stat-total .stat-value { color: var(--primary); }
+
+        @media (min-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(4, 1fr); } /* 4 Kolom di Desktop */
+        }
+
+        /* --- CARD & FORM --- */
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+        .card-title {
+            font-size: 1.1rem; font-weight: 700; margin-bottom: 15px;
+            padding-bottom: 10px; border-bottom: 2px solid #e2e8f0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; font-size: 0.9rem; font-weight: 500; }
+        
+        .form-input {
+            width: 100%; padding: 12px; font-size: 1rem;
+            border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc;
+        }
+        .form-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+        .uppercase { text-transform: uppercase; }
+
+        .btn-group { display: flex; gap: 10px; }
+        .btn {
+            flex: 1; padding: 14px; border: none; border-radius: 8px;
+            font-weight: 700; cursor: pointer; font-size: 1rem; transition: 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-secondary { background: #94a3b8; color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+
+        /* --- TABLE --- */
+        .table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f1f5f9; font-weight: 600; }
+        
+        .badge-status {
+            display: inline-block; padding: 4px 8px; border-radius: 4px;
+            font-size: 0.75rem; font-weight: 700; background: #dbeafe; color: #1e40af;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer; margin-right: 5px;
+            font-size: 0.8rem; color: white; transition: 0.2s;
+        }
+        .btn-edit { background: var(--warning); }
+        .btn-delete { background: var(--danger); }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #333; color: white; padding: 12px 24px;
+            border-radius: 50px; font-size: 0.9rem;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+            z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .toast.show { opacity: 1; }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- Header -->
+        <div class="header">
+            <h1>🚛 Manajemen Bongkar Muat</h1>
+            <p>Laporan & Statistik Lapangan</p>
+        </div>
+
+        <!-- DASHBOARD COUNTER -->
+        <div class="stats-grid">
+            <div class="stat-card stat-bongkar">
+                <div class="stat-label">📥 Bongkar (Disch)</div>
+                <div class="stat-value" id="countBongkar">0</div>
+            </div>
+            <div class="stat-card stat-muat">
+                <div class="stat-label">📤 Muat (Load)</div>
+                <div class="stat-value" id="countMuat">0</div>
+            </div>
+            <div class="stat-card stat-pindah">
+                <div class="stat-label">🔄 Pindah Lap.</div>
+                <div class="stat-value" id="countPindah">0</div>
+            </div>
+            <div class="stat-card stat-total">
+                <div class="stat-label">📦 Total Operasi</div>
+                <div class="stat-value" id="countTotal">0</div>
+            </div>
+        </div>
+
+        <!-- Form Input -->
+        <div class="card">
+            <div class="card-title">
+                <span id="formTitle">Input Data Baru</span>
+                <span style="font-size:0.8rem; color:var(--text-light); font-weight:400;">Operator</span>
+            </div>
+            
+            <form id="bongkarForm" onsubmit="event.preventDefault(); simpanData();">
+                <!-- ID Tersembunyi -->
+                <input type="hidden" id="dataId" value="">
+
+                <div class="form-group">
+                    <label class="form-label">Nomor Truck</label>
+                    <input type="text" id="noTruck" class="form-input uppercase" placeholder="Contoh: B 9288 XYZ" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Nomor Kontener</label>
+                    <input type="text" id="noKontener" class="form-input uppercase" placeholder="Contoh: TCLU 1234567" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tipe Operasi</label>
+                    <select id="tipeOperasi" class="form-input">
+                        <option value="Bongkar Kapal">Bongkar Kapal (Unloading)</option>
+                        <option value="Muat Kapal">Muat Kapal (Loading)</option>
+                        <option value="Pindah Lapangan">Pindah Lapangan (Shifting)</option>
+                    </select>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary" id="btnSave">💾 Simpan Data</button>
+                    <button type="button" class="btn btn-secondary" id="btnCancel" onclick="resetForm()" style="display:none;">❌ Batal Edit</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabel Data -->
+        <div class="card">
+            <div class="card-title">
+                Riwayat Bongkar Muat
+                <button class="action-btn" style="background: var(--success); float:right;" onclick="downloadCSV()">📥 Download</button>
+            </div>
+            
+            <div class="table-responsive">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Waktu</th>
+                            <th>No. Truck</th>
+                            <th>No. Kontener</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="emptyState" style="text-align:center; padding:20px; color:#94a3b8; display:none;">
+                Belum ada data bongkar muat.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">Pesan Notifikasi</div>
+
+    <script>
+        const STORAGE_KEY = 'DATA_BONGKAR_MUAT_V4'; // Versi baru dengan counter
+
+        // --- FUNGSI HITUNG COUNTER (FITUR BARU) ---
+        function updateCounters(dataLog) {
+            let bongkar = 0;
+            let muat = 0;
+            let pindah = 0;
+
+            dataLog.forEach(item => {
+                if (item.tipe === 'Bongkar Kapal') bongkar++;
+                else if (item.tipe === 'Muat Kapal') muat++;
+                else if (item.tipe === 'Pindah Lapangan') pindah++;
+            });
+
+            const total = dataLog.length;
+
+            // Update DOM
+            document.getElementById('countBongkar').innerText = bongkar;
+            document.getElementById('countMuat').innerText = muat;
+            document.getElementById('countPindah').innerText = pindah;
+            document.getElementById('countTotal').innerText = total;
+        }
+
+        // --- SIMPAN DATA ---
+        function simpanData() {
+            const id = document.getElementById('dataId').value;
+            const truck = document.getElementById('noTruck').value.trim().toUpperCase();
+            const kontener = document.getElementById('noKontener').value.trim().toUpperCase();
+            const tipe = document.getElementById('tipeOperasi').value;
+
+            if(!truck || !kontener) {
+                showToast("Mohon lengkapi data!");
+                return;
+            }
+
+            let dataLog = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+            if (id) {
+                // Edit
+                const index = dataLog.findIndex(item => item.id == id);
+                if (index !== -1) {
+                    dataLog[index] = {
+                        id: id,
+                        waktu: new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }),
+                        truck: truck,
+                        kontener: kontener,
+                        tipe: tipe,
+                        timestamp: new Date().getTime()
+                    };
+                    showToast("Data Berhasil Diupdate!");
+                }
+            } else {
+                // Baru
+                const newData = {
+                    id: Date.now(),
+                    waktu: new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }),
+                    truck: truck,
+                    kontener: kontener,
+                    tipe: tipe,
+                    timestamp: new Date().getTime()
+                };
+                dataLog.unshift(newData);
+                showToast("Data Berhasil Disimpan!");
+            }
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataLog));
+            renderTable(); // RenderTable otomatis memanggil updateCounters
+            resetForm();
+        }
+
+        // --- RENDER TABEL ---
+        function renderTable() {
+            const dataLog = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            const tbody = document.querySelector('#dataTable tbody');
+            const emptyState = document.getElementById('emptyState');
+            
+            tbody.innerHTML = '';
+
+            // PANGGIL FUNGSI COUNTER DI SINI
+            updateCounters(dataLog);
+
+            if (dataLog.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            } else {
+                emptyState.style.display = 'none';
+            }
+
+            dataLog.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.waktu}</td>
+                    <td style="font-weight:600;">${item.truck}</td>
+                    <td>${item.kontener}</td>
+                    <td><span class="badge-status">${item.tipe}</span></td>
+                    <td>
+                        <button class="action-btn btn-edit" onclick="editData(${item.id})">Edit</button>
+                        <button class="action-btn btn-delete" onclick="hapusData(${item.id})">Hapus</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- EDIT DATA ---
+        function editData(id) {
+            const dataLog = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            const item = dataLog.find(d => d.id == id);
+
+            if (item) {
+                document.getElementById('dataId').value = item.id;
+                document.getElementById('noTruck').value = item.truck;
+                document.getElementById('noKontener').value = item.kontener;
+                document.getElementById('tipeOperasi').value = item.tipe;
+
+                document.getElementById('formTitle').innerText = "Edit Data Bongkar Muat";
+                document.getElementById('btnSave').innerText = "🔄 Update Data";
+                document.getElementById('btnSave').classList.remove('btn-primary');
+                document.getElementById('btnSave').classList.add('btn-warning');
+                document.getElementById('btnCancel').style.display = 'block';
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // --- HAPUS DATA ---
+        function hapusData(id) {
+            if(confirm("Yakin ingin menghapus data ini?")) {
+                let dataLog = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+                dataLog = dataLog.filter(item => item.id != id);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataLog));
+                renderTable(); // RenderTable otomatis mengupdate counter
+                showToast("Data telah dihapus");
+                
+                if(document.getElementById('dataId').value == id) {
+                    resetForm();
+                }
+            }
+        }
+
+        // --- RESET FORM ---
+        function resetForm() {
+            document.getElementById('bongkarForm').reset();
+            document.getElementById('dataId').value = "";
+            
+            document.getElementById('formTitle').innerText = "Input Data Baru";
+            document.getElementById('btnSave').innerText = "💾 Simpan Data";
+            document.getElementById('btnSave').classList.add('btn-primary');
+            document.getElementById('btnSave').classList.remove('btn-warning');
+            document.getElementById('btnCancel').style.display = 'none';
+            
+            document.getElementById('noTruck').focus();
+        }
+
+        // --- DOWNLOAD CSV ---
+        function downloadCSV() {
+            let dataLog = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            if(dataLog.length === 0) { showToast("Tidak ada data!"); return; }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Waktu,No. Truck,No. Kontener,Tipe Operasi\n";
+
+            dataLog.forEach(row => {
+                csvContent += `${row.waktu},${row.truck},${row.kontener},${row.tipe}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const dateStr = new Date().toISOString().slice(0,10);
+            link.setAttribute("download", `Laporan_Bongkar_Muat_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- UTILS ---
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', renderTable);
+
+    </script>
+</body>
+</html>
+
